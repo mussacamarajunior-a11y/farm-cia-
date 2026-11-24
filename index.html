@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Farmácia Tchitcho Júnior</title>
+<meta name="description" content="Pedidos de medicamentos e envio de receitas à Farmácia Tchitcho Júnior.">
+<meta name="theme-color" content="#146b52">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<style>
+:root{font-family:Arial,sans-serif;color:#18312b;background:#f3f7f5}
+body{margin:0;padding:18px}.wrap{max-width:620px;margin:auto}
+header{background:#146b52;color:white;padding:22px;border-radius:16px;margin-bottom:16px}
+h1{font-size:23px;margin:0 0 6px}header p{margin:0;opacity:.9}
+.card{background:white;padding:18px;border-radius:14px;margin:14px 0;box-shadow:0 2px 10px #18312b12}
+label{display:block;font-weight:600;margin:13px 0 6px}
+input,textarea,select{box-sizing:border-box;width:100%;padding:12px;border:1px solid #cbd8d2;border-radius:9px;font:inherit}
+textarea{min-height:75px}
+button{border:0;border-radius:10px;padding:13px 15px;font-weight:700;font-size:15px;cursor:pointer}
+.primary{background:#146b52;color:white;width:100%;margin-top:15px}
+.secondary{background:#e5f2ed;color:#145b48;width:100%;margin:7px 0}
+.note{font-size:13px;color:#52645d;line-height:1.45}
+#preview{max-width:100%;max-height:280px;display:none;margin-top:12px;border-radius:10px}
+.order{border:1px solid #dce7e1;padding:12px;border-radius:10px;margin:10px 0}
+.order img{max-width:100%;max-height:260px;display:block;margin-top:8px}
+.status{font-weight:700;color:#146b52}
+.tabs{display:flex;gap:8px}.tabs button{flex:1}
+.hidden{display:none}
+</style>
+</head>
+<body><main class="wrap">
+<header><h1>Farmácia Tchitcho Júnior</h1><p>Envie uma receita ou solicite um medicamento.</p></header>
+<button id="installAppButton" class="secondary hidden" type="button" onclick="installFarmaciaApp()">Instalar aplicação no Android</button>
+<div class="tabs">
+<button class="secondary" onclick="show('client')">Área do paciente</button>
+<button class="secondary" onclick="show('admin')">Área da farmácia</button>
+</div>
+<section id="client" class="card">
+<h2>Novo pedido</h2>
+<label for="phone">Número de telefone (obrigatório)</label>
+<input id="phone" type="tel" placeholder="O teu número de telefone">
+<label for="name">Nome (opcional)</label><input id="name" placeholder="Nome">
+<label for="address">Endereço (opcional)</label><input id="address" placeholder="Bairro, rua ou referência">
+<label for="kind">Tipo de pedido (opcional)</label>
+<select id="kind"><option value="">Selecionar</option><option>Enviar receita médica</option><option>Solicitar medicamento específico</option></select>
+<label for="notes">Observações (opcional)</label><textarea id="notes" placeholder="Escreve aqui, se desejares"></textarea>
+<p><b>Fotografia da receita ou do medicamento (opcional)</b></p>
+<button class="secondary" type="button" onclick="document.getElementById('camera').click()">📷 Tirar fotografia</button>
+<button class="secondary" type="button" onclick="document.getElementById('gallery').click()">🖼️ Escolher fotografia da galeria</button>
+<input id="camera" type="file" accept="image/*" capture="environment" class="hidden">
+<input id="gallery" type="file" accept="image/*" class="hidden">
+<img id="preview" alt="Pré-visualização da fotografia">
+<p class="note">Podes enviar apenas o número de telefone ou acrescentar os outros dados. O pedido será enviado à farmácia pela Internet.</p>
+<button class="primary" onclick="sendOrder()">Enviar pedido</button>
+<div id="msg" class="note" aria-live="polite"></div>
+</section>
+<section id="admin" class="card hidden">
+<h2>Painel da farmácia</h2>
+<div id="adminLogin">
+  <p class="note">Acesso reservado à equipa autorizada da farmácia.</p>
+  <label for="adminEmail">E-mail</label><input id="adminEmail" type="email" autocomplete="username">
+  <label for="adminPassword">Palavra-passe</label><input id="adminPassword" type="password" autocomplete="current-password">
+  <button class="primary" type="button" onclick="adminSignIn()">Entrar</button>
+  <button class="secondary" type="button" onclick="showPasswordRecovery()">Esqueci-me da palavra-passe</button>
+  <p id="loginMessage" class="note" aria-live="polite"></p>
+</div>
+<div id="recoveryPanel" class="hidden">
+  <h3>Recuperar palavra-passe</h3>
+  <p class="note">Indica o teu e-mail. Enviaremos uma mensagem com uma ligação para criares uma nova palavra-passe.</p>
+  <label for="recoveryEmail">E-mail</label>
+  <input id="recoveryEmail" type="email" autocomplete="email">
+  <button class="primary" type="button" onclick="sendPasswordRecovery()">Enviar ligação</button>
+  <button class="secondary" type="button" onclick="backToLogin()">Voltar ao início de sessão</button>
+  <p id="recoveryMessage" class="note" aria-live="polite"></p>
+</div>
+<div id="newPasswordPanel" class="hidden">
+  <h3>Definir nova palavra-passe</h3>
+  <p class="note">Escreve a nova palavra-passe que pretendes utilizar.</p>
+  <label for="newPassword">Nova palavra-passe</label>
+  <input id="newPassword" type="password" autocomplete="new-password">
+  <label for="confirmNewPassword">Confirmar nova palavra-passe</label>
+  <input id="confirmNewPassword" type="password" autocomplete="new-password">
+  <button class="primary" type="button" onclick="saveNewPassword()">Guardar nova palavra-passe</button>
+  <p id="newPasswordMessage" class="note" aria-live="polite"></p>
+</div>
+<div id="adminPanel" class="hidden">
+  <button class="secondary" type="button" onclick="adminSignOut()">Terminar sessão</button>
+  <button class="secondary" type="button" onclick="loadOrders()">Actualizar pedidos</button>
+  <div id="orders"></div>
+</div>
+</section>
+</main>
+
+<script>
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  const installButton = document.getElementById('installAppButton');
+  if (installButton) installButton.classList.remove('hidden');
+});
+async function installFarmaciaApp() {
+  if (!deferredInstallPrompt) {
+    alert('No Android, abre o menu do Chrome e escolhe “Instalar aplicação” ou “Adicionar ao ecrã inicial”.');
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  document.getElementById('installAppButton').classList.add('hidden');
+}
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(console.error));
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://pddaeqsysahcfdncmmmf.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_E0NHWe0Vl719WVus5TO4nQ_rVrQLHCy';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Quando o utilizador regressa pelo link de recuperação, mostrar o formulário
+// para definir a nova palavra-passe.
+db.auth.onAuthStateChange((event) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    document.getElementById('adminLogin').classList.add('hidden');
+    document.getElementById('recoveryPanel').classList.add('hidden');
+    document.getElementById('adminPanel').classList.add('hidden');
+    document.getElementById('newPasswordPanel').classList.remove('hidden');
+  }
+});
+
+let selectedFile = null;
+const camera = document.getElementById('camera');
+const gallery = document.getElementById('gallery');
+camera.addEventListener('change', () => chooseFile(camera));
+gallery.addEventListener('change', () => chooseFile(gallery));
+
+function chooseFile(input) {
+  const f = input.files && input.files[0];
+  if (!f) return;
+  if (!f.type.startsWith('image/')) {
+    document.getElementById('msg').textContent = 'Escolhe um ficheiro de imagem.';
+    input.value = '';
+    return;
+  }
+  selectedFile = f;
+  const r = new FileReader();
+  r.onload = e => {
+    const p = document.getElementById('preview');
+    p.src = e.target.result;
+    p.style.display = 'block';
+  };
+  r.readAsDataURL(f);
+}
+
+function show(which) {
+  document.getElementById('client').classList.toggle('hidden', which !== 'client');
+  document.getElementById('admin').classList.toggle('hidden', which !== 'admin');
+  if (which === 'admin') checkAdminSession();
+}
+
+function setMessage(message, isError=false) {
+  const el = document.getElementById('msg');
+  el.textContent = message;
+  el.style.color = isError ? '#a32626' : '#52645d';
+}
+
+async function imageAsDataUrl(file) {
+  if (!file) return null;
+  // Reduz a fotografia para evitar enviar ficheiros demasiado grandes para a base de dados.
+  const dataUrl = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+  const img = await new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = dataUrl;
+  });
+  const max = 1400;
+  const scale = Math.min(1, max / Math.max(img.width, img.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(img.width * scale));
+  canvas.height = Math.max(1, Math.round(img.height * scale));
+  canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL('image/jpeg', 0.72);
+}
+
+async function sendOrder() {
+  const phone = document.getElementById('phone').value.trim();
+  if (!phone) {
+    setMessage('Introduz o número de telefone para enviar o pedido.', true);
+    return;
+  }
+  const button = document.querySelector('#client .primary');
+  button.disabled = true;
+  button.textContent = 'A enviar...';
+  try {
+    const fotografia = await imageAsDataUrl(selectedFile);
+    const pedido = {
+      telefone: phone,
+      nome: document.getElementById('name').value.trim() || null,
+      endereco: document.getElementById('address').value.trim() || null,
+      tipo_pedido: document.getElementById('kind').value || null,
+      observacoes: document.getElementById('notes').value.trim() || null,
+      fotografia,
+      estado: 'Recebido'
+    };
+    const { error } = await db.from('pedidos').insert(pedido);
+    if (error) throw error;
+
+    setMessage('Pedido enviado com sucesso à farmácia!');
+    document.getElementById('phone').value = '';
+    document.getElementById('name').value = '';
+    document.getElementById('address').value = '';
+    document.getElementById('kind').value = '';
+    document.getElementById('notes').value = '';
+    document.getElementById('preview').style.display = 'none';
+    document.getElementById('preview').src = '';
+    selectedFile = null;
+    camera.value = '';
+    gallery.value = '';
+  } catch (error) {
+    console.error(error);
+    setMessage('Não foi possível enviar. Verifica a ligação e as permissões da tabela pedidos. Detalhe: ' + (error.message || 'erro desconhecido'), true);
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Enviar pedido';
+  }
+}
+
+async function checkAdminSession() {
+  const { data: { session } } = await db.auth.getSession();
+  document.getElementById('adminLogin').classList.toggle('hidden', !!session);
+  document.getElementById('adminPanel').classList.toggle('hidden', !session);
+  if (session) loadOrders();
+}
+
+
+
+function showPasswordRecovery() {
+  const email = document.getElementById('adminEmail').value.trim();
+  document.getElementById('recoveryEmail').value = email;
+  document.getElementById('adminLogin').classList.add('hidden');
+  document.getElementById('recoveryPanel').classList.remove('hidden');
+  document.getElementById('recoveryMessage').textContent = '';
+}
+
+function backToLogin() {
+  document.getElementById('recoveryPanel').classList.add('hidden');
+  document.getElementById('newPasswordPanel').classList.add('hidden');
+  document.getElementById('adminLogin').classList.remove('hidden');
+}
+
+async function sendPasswordRecovery() {
+  const email = document.getElementById('recoveryEmail').value.trim();
+  const message = document.getElementById('recoveryMessage');
+  if (!email) {
+    message.textContent = 'Introduz o teu endereço de e-mail.';
+    return;
+  }
+
+  message.textContent = 'A enviar a ligação...';
+  // O endereço atual será usado como destino de regresso após o clique no e-mail.
+  const redirectTo = window.location.href.split('#')[0].split('?')[0];
+  const { error } = await db.auth.resetPasswordForEmail(email, { redirectTo });
+
+  if (error) {
+    message.textContent = 'Não foi possível enviar a mensagem: ' + error.message;
+    return;
+  }
+  message.textContent = 'Pedido enviado. Verifica a caixa de entrada e também a pasta de spam.';
+}
+
+async function saveNewPassword() {
+  const password = document.getElementById('newPassword').value;
+  const confirmation = document.getElementById('confirmNewPassword').value;
+  const message = document.getElementById('newPasswordMessage');
+
+  if (password.length < 8) {
+    message.textContent = 'A palavra-passe deve ter pelo menos 8 caracteres.';
+    return;
+  }
+  if (password !== confirmation) {
+    message.textContent = 'As duas palavras-passe não coincidem.';
+    return;
+  }
+
+  message.textContent = 'A guardar a nova palavra-passe...';
+  const { error } = await db.auth.updateUser({ password });
+
+  if (error) {
+    message.textContent = 'Não foi possível alterar a palavra-passe: ' + error.message;
+    return;
+  }
+
+  message.textContent = 'Palavra-passe alterada com sucesso. Já podes iniciar sessão.';
+  document.getElementById('newPassword').value = '';
+  document.getElementById('confirmNewPassword').value = '';
+  await db.auth.signOut();
+  document.getElementById('newPasswordPanel').classList.add('hidden');
+  document.getElementById('adminLogin').classList.remove('hidden');
+}
+
+async function adminSignIn() {
+  const email = document.getElementById('adminEmail').value.trim();
+  const password = document.getElementById('adminPassword').value;
+  if (!email || !password) {
+    alert('Introduz o e-mail e a palavra-passe.');
+    return;
+  }
+  const { error } = await db.auth.signInWithPassword({ email, password });
+  if (error) {
+    alert('Não foi possível entrar: ' + error.message);
+    return;
+  }
+  document.getElementById('adminPassword').value = '';
+  checkAdminSession();
+}
+
+async function adminSignOut() {
+  await db.auth.signOut();
+  document.getElementById('orders').innerHTML = '';
+  checkAdminSession();
+}
+
+async function loadOrders() {
+  const el = document.getElementById('orders');
+  el.innerHTML = '<p>A carregar pedidos...</p>';
+  const { data, error } = await db.from('pedidos')
+    .select('id, telefone, nome, endereco, tipo_pedido, observacoes, fotografia, estado, criado_em')
+    .order('criado_em', { ascending: false });
+  if (error) {
+    el.textContent = 'Não foi possível carregar os pedidos: ' + error.message;
+    return;
+  }
+  if (!data || !data.length) {
+    el.innerHTML = '<p>Ainda não há pedidos na base de dados.</p>';
+    return;
+  }
+  el.innerHTML = data.map(o => `
+    <div class="order">
+      <b>${esc(o.nome || 'Cliente')}</b><br>
+      Telefone: ${esc(o.telefone)}<br>
+      Endereço: ${esc(o.endereco || 'Não indicado')}<br>
+      Tipo: ${esc(o.tipo_pedido || 'Não indicado')}<br>
+      Observações: ${esc(o.observacoes || '—')}<br>
+      Recebido: ${esc(o.criado_em ? new Date(o.criado_em).toLocaleString('pt-PT') : '')}
+      <p class="status">Estado: ${esc(o.estado)}</p>
+      ${o.fotografia ? `<img src="${o.fotografia}" alt="Fotografia enviada">` : '<p>Sem fotografia.</p>'}
+      <label>Actualizar estado</label>
+      <select id="status-${esc(o.id)}">
+        ${['Recebido','Em análise','Confirmado','Recusado','A caminho','Entregue'].map(s => `<option ${s === o.estado ? 'selected' : ''}>${s}</option>`).join('')}
+      </select>
+      <button class="secondary" type="button" onclick="updateStatus('${esc(o.id)}')">Guardar estado</button>
+    </div>`).join('');
+}
+
+async function updateStatus(id) {
+  const estado = document.getElementById('status-' + id).value;
+  const { error } = await db.from('pedidos').update({ estado }).eq('id', id);
+  if (error) {
+    alert('Não foi possível actualizar o estado: ' + error.message);
+    return;
+  }
+  loadOrders();
+}
+
+function esc(value) {
+  return String(value ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[c]));
+}
+</script></body></html>
